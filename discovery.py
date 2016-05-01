@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 # coding: UTF-8
+"""
+Bruteforcing tool to reveal files in directories without read permission
+"""
+
 from optparse import OptionParser, OptionGroup
 import itertools
 import string

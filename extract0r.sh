@@ -1,5 +1,5 @@
 #!/bin/bash
-# extracting shellcode from ELF/nasm files
+# generating shellcode from nasm files
 # by vic511
 
 PATH="/bin:/usr/bin"
@@ -21,8 +21,8 @@ USAGE
 execute=false
 asmfile="$1"
 outfile="$2"
-arch="$(uname -m)"
-[ "$(uname -m)" == "x86_64" ] && arch="64" || arch="32"
+[ "$(uname -m)" == "x86_64" ] && myarch="64" || myarch="32"
+arch="$myarch"
 
 while (($# > 2 )); do
     case "$3" in
@@ -46,7 +46,7 @@ x=0
 shellcode=''
 for i in $hex; do
 	if [ "$i" == "00" ]; then
-		echo "Shellcode contains null bytes !" >&2
+		echo "[-] Shellcode contains null bytes !" >&2
 		exit
 	fi
 	if ((x % 15 == 0)) && ((x != 0)); then
@@ -72,8 +72,10 @@ src="int main(int argc, char **argv){
 echo "$src"
 
 if $execute; then
+	((myarch < arch)) && echo "[-] Execution error: target host is 32 bits !" >&2 && exit
 	echo "[+] Execution..."
 	ld -o "${asmfile}.bin" "${asmfile}.o" 2>&-
 	eval "./${asmfile}.bin"
+	rm "${asmfile}.bin"
 fi
-rm "${asmfile}".{bin,o}
+rm "${asmfile}.o"
