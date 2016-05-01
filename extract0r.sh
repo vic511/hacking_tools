@@ -6,8 +6,8 @@ PATH="/bin:/usr/bin"
 
 usage(){
 	cat >&2 <<USAGE
-Usage: $(basename $0) <file> [options]
-where file is an ELF, or a nasm file
+Usage: $(basename $0) <file> <outfile> [options]
+where file is a nasm file
 
 Options:
   -h, --help       show this help message and exit
@@ -17,27 +17,27 @@ USAGE
 	exit
 }
 
-(($# == 0)) && usage
+(($# < 2)) && usage
 execute=false
 asmfile="$1"
+outfile="$2"
 arch="$(uname -m)"
 [ "$(uname -m)" == "x86_64" ] && arch="64" || arch="32"
 
-while (($# > 1 )); do
-    case "$2" in
+while (($# > 2 )); do
+    case "$3" in
         -h|--help)      usage;;
-        -e|--execute)             execute=true;;
+        -e|--execute)   execute=true;;
         -32)            arch="32";;
         -64)    		arch="64";;
-        *)          echo "'$2': unknown option" >&2 && exit;;
+        *)          echo "'$3': unknown option" >&2 && exit;;
     esac
     shift
 done
 
-data="$(objdump -d "$asmfile" 2>&-)" ||
-	data="$(nasm -f "elf${arch}" "$asmfile" -o "${asmfile}.o" && objdump -d "${asmfile}.o")" ||
-	exit
-echo "$data" | head -n2 | tail -n1 && echo
+nasm -f "elf${arch}" "$asmfile" -o "${asmfile}.o" || exit
+data="$(objdump -d "${asmfile}.o")" || exit
+echo "$data" | head -n2 | tail -n1
 
 hex="$(for i in $data; do
 	echo $i;
@@ -56,7 +56,7 @@ for i in $hex; do
 	x=$((x+1))
 done
 
-echo "$hex" | tr -d "\n" | xxd -r -p | xxd -p >&2
+echo "$hex" | xxd -r -p > "$outfile"
 echo
 
 src="int main(int argc, char **argv){
@@ -72,13 +72,8 @@ src="int main(int argc, char **argv){
 echo "$src"
 
 if $execute; then
-	cd /tmp
-	echo
-	echo "$src" > extract0r.c
-	gcc extract0r.c -o extract0r &&
-		chmod +x extract0r &&
-		./extract0r
-	rm extract0r extract0r.c
+	echo "[+] Execution..."
+	ld -o "${asmfile}.bin" "${asmfile}.o" 2>&-
+	eval "./${asmfile}.bin"
 fi
-
-[ -f "${asmfile}.o" ] && rm "${asmfile}.o"
+rm "${asmfile}".{bin,o}
